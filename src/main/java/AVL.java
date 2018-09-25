@@ -1,202 +1,229 @@
-
-import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Created with IntelliJ IDEA.
  *
  * @author panqiang37@gmail.com
- * @version JDK8
- * Date: 2018/8/10 下午5:44
+ * @version kris37
+ * Date: 2018/9/23 下午2:17
  * To change this template use File | Settings | File Templates.
  * Description:
  * <p>
- *     JAVA AVL树基础操作
- *
  * <br>
  */
-public class AVL<K extends Comparable,V> implements Serializable{
-
-    private static final long serialVersionUID = -7958565643636780390L;
+public class AVL<K extends Comparable,V> {
 
     private Node root;
-    public AVL(){
 
-    }
-
-    private class Node{
+    private  final class Node{
         private K key;
         private V value;
-        private int height;
-        private int size;
+        private int size = 1;
+        private int height = 0;
         private Node left;
         private Node right;
-        public Node(K key,V value,int height,int size){
-            this.height = height;
-            this.size = size;
+        public Node(K key,V value){
             this.key = key;
             this.value = value;
         }
-
     }
 
-    /**
-     * AVL 树的节点数
-     * @return
-     */
-    public int size(){
-        return size(root);
-    }
-
-    /**
-     *  node 为parent 的子树节点数
-     * @param node
-     * @return
-     */
-    private int size(Node node){
-        if(Objects.isNull(node)){
-            return 0;
-        }else{
-            return node.size;
-        }
-    }
-
-    /**
-     * AVL tree's height ,begin from 0; if null height = -1;
-     * @return
-     */
-    public int height(){
-        return height(root);
-    }
-
-    private int height(Node node){
-        if(Objects.isNull(node)){
-            return -1;
-        }
-        return node.height;
-    }
-
-    // avl 树的增删改查
-
-    /**
-     * search
-     */
-
-    public Node get(K key){
-        return get(root,key);
-    }
-
-    private Node get(Node node,K key){
+    // insert
+    public void insert(K key,V value){
         if(Objects.isNull(key)){
-            throw new IllegalArgumentException("accept key is null");
+            throw new IllegalArgumentException(" insert key is null !");
         }
+        root  = insert(root,key,value);
+    }
+
+    /**
+     *  添加元素 reBalance
+     * @param node
+     * @param key
+     * @param value
+     * @return
+     */
+    private Node insert(Node node,K key, V value){
         if(Objects.isNull(node)){
-            return null;
+            return new Node(key,value);
         }
         int cmp = key.compareTo(node.key);
         if(cmp > 0){
-            return get(node.right,key);
-        }else if(cmp < 0 ){
-            return get(node.left,key);
-        }else{
-            return node;
-        }
-    }
-
-    public boolean contains(K key){
-        return contains(root,key);
-    }
-    private boolean contains(Node node,K key){
-        return !Objects.isNull(get(node,key));
-    }
-
-    public void insert(K key,V value){
-        root = insert(root,key,value);
-    }
-
-    private Node insert(Node node,K key,V value){
-        if(Objects.isNull(node)){
-            return new Node(key,value,0,1);
-        }
-        int cmp = key.compareTo(node.key);
-        if(cmp > 0 ){
-            node.right = insert(node.right,key,value);
-        }else if(cmp < 0){
-            node.left = insert(node.left,key,value);
-        }else{
+            node.right =  insert(node.right,key,value);
+        }else if (cmp < 0){
+            node.left =  insert(node.left,key,value);
+        }else {
             node.value = value;
-            return node;
         }
-        node.height = Math.max(height(node.left),height(node.right)) + 1;
-        node.size = size(node.left) + size(node.right) + 1;
-        return reBalance(node);
+
+        node.height = reComputeHeight(node);
+        node.size = reComputeSize(node);
+        return rebalance(node);
     }
 
+    public V search(K key){
+        if (Objects.isNull(key)) return null;
+        Node cur = root;
+        while(cur != null){
+            int cmp = key.compareTo(cur.key);
+            if(cmp > 0){
+                cur = cur.right;
+            }else if(cmp < 0){
+                cur =  cur.left;
+            }else {
+                return cur.value;
+            }
+        }
+        return null;
+    }
+
+
+    public void delete(K key){
+        if(Objects.isNull(key)) throw new IllegalArgumentException("delete key is null !");
+        if(null == search(key)) return ;
+        root = delete(root,key);
+    }
+
+    private Node delete(Node node,K key){
+        int cmp = key.compareTo(node.key);
+        if(cmp  > 0 ){
+            node.right  = delete(node.right,key);
+        }else if(cmp < 0){
+            node.left =  delete(node.left,key);
+        }else {
+
+            if(node.left == null){
+                return node.right;
+            }else if(node.right == null){
+                return node.left;
+            }else {
+
+                // left and right are't null。replace and delte minNode（）
+                Node min = findMin(node.right);
+                min.right = deleteMin(node.right);
+                min.left = node.left;
+                node = min;
+            }
+        }
+        node.size = reComputeSize(node);
+        node.height = reComputeHeight(node);
+        return rebalance(node);
+    }
+
+    private Node findMin(Node node){
+        while (node.left != null){
+            node = node.left;
+        }
+        return node;
+    }
+    private Node deleteMin(Node node){
+        if(node.left == null){
+            return node.right;
+        }
+        node.left = deleteMin(node.left);
+        node.size = reComputeSize(node);
+        node.height = reComputeHeight(node);
+        return rebalance(node);
+    }
+
+
+    /** 计算节点平衡因子
+     *  compute node's balance factor
+     * @param node
+     * @return left.height - right.height
+     */
+    private int balanceFactor(Node node){
+        return height(node.left) - height(node.right);
+    }
+    private int height(Node node){
+        return node == null ? -1:node.height;
+    }
 
     /**
-     * 自平衡
+     * 重新计算当前节点的高度
      * @param node
      * @return
      */
-    private Node reBalance(Node node){
+    private int reComputeHeight(Node node){
+        return Math.max(height(node.left),height(node.right)) + 1;
+    }
+
+    private int size(Node node){
+       return node == null ? 0: node.size;
+    }
+
+    /**
+     * 重新计算当前节点的size
+     * @param node
+     * @return
+     */
+    private int reComputeSize(Node node){
+        return size(node.left) + size(node.right) + 1;
+    }
+    /**
+     *  对非平衡节点进行调整
+     * @param node
+     * @return
+     *
+     */
+    private Node rebalance(Node node){
         int factor = balanceFactor(node);
-        // 左轻右重
-        if(factor < -1){
-            // RL模式
-            if(balanceFactor(node.right) > 0){
-                node.right = rightRotate(node.right);
-            }
-            node = leftRotate(node);
-        }else if(factor > 1){
-            //
+
+        if(factor > 1){
             if(balanceFactor(node.left) < 0){
                 node.left = leftRotate(node.left);
             }
             node = rightRotate(node);
+        }else if (factor < -1){
+            if(balanceFactor(node.right) > 0){
+                node.right = rightRotate(node.right);
+            }
+            node = leftRotate(node);
         }
         return node;
     }
 
-    private int balanceFactor(Node node){
-        return height(node.left ) - height(node.right);
-    }
-
-
     /**
-     * node 节点转换为左节点
-     * @param node
+     *  左旋
+     *
+     *      x               y
+     *     ／\              /\
+     *     ∂ y     ==>     x ç
+     *      / \           /\
+     *      ß  ç         ∂ ß
+     *
+     * @param x
      * @return
      */
-    private Node leftRotate(Node node){
-        Node subRoot = node.right;
-        node.right = subRoot.left;
-        subRoot.left = node ;
-        node.size = size(node.left) + size(node.right) + 1;
-        node.height =  Math.max(height(node.left),height(node.right)) + 1;
-        subRoot.size = size(subRoot.left) + size(subRoot.right) + 1;
-        subRoot.height = Math.max(height(subRoot.left),height(subRoot.right)) + 1;
-        return subRoot;
+    private Node leftRotate(Node x){
+        if( x == null||x.right == null)
+            throw new IllegalArgumentException("left rotate node or node.right is null !");
+        Node y = x.right;
+        x.right = y.left;
+        y.left = x;
+        x.size = reComputeSize(x);
+        y.size = reComputeSize(y);
+        x.height = reComputeHeight(x);
+        y.height = reComputeHeight(y);
+        return y;
+    }
+
+    private Node rightRotate(Node x){
+        Node y = x.left;
+        x.left = y.right;
+        y.right = x;
+        x.size = reComputeSize(x);
+        y.size = reComputeSize(y);
+        x.height = reComputeHeight(x);
+        y.height = reComputeHeight(y);
+        return y;
     }
 
     /**
-     * node 节点转化为右节点
-     * @param node
-     * @return
-     */
-    private Node rightRotate(Node node){
-        Node subroot = node.left;
-        node.left = subroot.right;
-        subroot.right = node;
-        node.size = size(node.left) + size(node.right) + 1;
-        node.height =  Math.max(height(node.left),height(node.right)) + 1;
-        subroot.size = size(subroot.left) + size(subroot.right) + 1;
-        subroot.height = Math.max(height(subroot.left),height(subroot.right)) + 1;
-        return subroot;
-    }
-
-
-    /**
-     * 中序遍历
+     * inorder lookup
      */
     public List<K> inOrder(){
         List list = new ArrayList<K>();
@@ -219,113 +246,23 @@ public class AVL<K extends Comparable,V> implements Serializable{
         return list;
     }
 
-    // delete
-
     /**
-     * 删除 node节点
-     * @param key
-     */
-    public void delete(K key){
-        // 不包含则直接返回
-        if(!contains(key)) return;
-        root = delete(root,key);
-    }
-
-    /**
-     *  删除节点
-     *  1。此节点是 leaf节点 直接删除
-     *  2。此节点的 左／右节点为 null 则 node.parent -> node.right/or null
-     *  3. 此节点的左右节点都不为null
-     *   3.1 将左子树的最大node 替换掉当前node
-     *   3.2 右子树的最小node 替换当前node
-     *
-     * 逐层递归更新 size height rebalance
-     * @param node
-     * @param key
+     * AVL tree's height ,begin from 0; if null height = -1;
      * @return
      */
-    private Node delete(Node node,K key){
-        if(Objects.isNull(node)){
-            return null;
-        }
-        int cmp = key.compareTo(node.key);
-
-        if(cmp > 0){
-            node.right = delete(node.right,key);
-        }else if(cmp < 0){
-            node.left = delete(node.left,key);
-        }else{
-            // 找到节点，准备进行删除
-            if(node.height == 0){
-                //leaf
-                return null;
-            }
-            if(Objects.isNull(node.left)){
-                return node.right;
-            }
-            if(Objects.isNull(node.right)){
-                return node.left;
-            }
-            // 左右节点都存在
-            // 这里比较一下左右节点的height 选择height 高的进行处理
-            Node temp = node;
-            if(node.left.height - node.right.height > 0){
-                node = findMaxNode(temp.left);
-                node.left = deteleMaxNode(temp.left);
-                node.right = temp.right;
-            }else {
-                node = findMinNode(temp.right);
-                node.right = deteleMinNode(temp.right);
-                node.left = temp.left;
-            }
-        }
-        node.height = Math.max(height(node.left),height(node.right)) + 1;
-        node.size = size(node.left) + size(node.right) + 1 ;
-        return reBalance(node);
+    public int height(){
+        return height(root);
+    }
+    /**
+     * AVL 树的节点数
+     * @return
+     */
+    public int size(){
+        return size(root);
     }
 
 
-    private Node deteleMaxNode(Node node){
-        if(Objects.isNull(node.right)){
-            return node.left;
-        }else{
-            node.right = deteleMaxNode(node.right);
-        }
-        node.height = Math.max(height(node.left),height(node.right)) + 1;
-        node.size = size(node.left) + size(node.right) + 1;
-        return reBalance(node);
-    }
-
-    private Node deteleMinNode(Node node){
-        if(Objects.isNull(node.left)){
-            return node.right;
-        }else{
-            node.left = deteleMinNode(node.left);
-        }
-        node.height = Math.max(height(node.left),height(node.right)) + 1;
-        node.size = size(node.left) + size(node.right) + 1;
-        return reBalance(node);
-
-    }
-
-    private Node findMaxNode(Node node){
-        if(Objects.isNull(node.right)){
-            return node;
-        }else{
-            return findMaxNode(node.right);
-        }
-    }
-
-    private Node findMinNode(Node node){
-
-        if(Objects.isNull(node.left)){
-            return node;
-        }else{
-            return findMinNode(node.left);
-        }
-    }
-
-    public static void main(String [] args){
+    public static void main(String []args){
 
         List<Integer> list = Arrays.asList(3,4,2,1,4,6,3,6,8,4,6,7,2,4,310,23,35,2,34);
         AVL<Integer, Integer> avl = new AVL<>();
@@ -350,7 +287,6 @@ public class AVL<K extends Comparable,V> implements Serializable{
         });
 
 
+
     }
 }
-
-
