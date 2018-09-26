@@ -332,13 +332,12 @@ public class AVL<K extends Comparable,V> {
         });
 
 
-        for (int i = 1;i<11;i++){
+        for (int i = 1;i<avl.size();i++){
             int key = avl.select(i).key;
             System.out.println(String.format("select rank = %d  key is: ",i)+ key );
             System.out.println(String.format("select key = %d  rank is: ",key)+ avl.rank(key) );
 
         }
-
 
         list.forEach(each -> {
             avl.delete(each);
