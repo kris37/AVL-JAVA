@@ -262,6 +262,61 @@ public class AVL<K extends Comparable,V> {
     }
 
 
+    /**
+     *  查找排名第n的元素（min -> max）
+     * @param n
+     * @return
+     */
+    public Node select(int n){
+        if (n > size(root) || n < 1){
+            return null;
+        }
+        return select(root,n);
+    }
+    private Node select(Node node,int n){
+
+        int rank = size(node.left) + 1;
+        if(n > rank){
+            return select(node.right,n -rank);
+        }else if(n < rank){
+            return select(node.left,n);
+        }else {
+            return node;
+        }
+    }
+
+    /**
+     *  查看当前 k 的排名
+     * @param key
+     * @return
+     */
+    public int rank(K key){
+        if(Objects.isNull(key)){
+            throw new IllegalArgumentException(" rank key is null !");
+        }
+        return rank(root,key);
+
+    }
+
+    private int rank(Node node,K key){
+
+        int cmp = 0;
+        int rank = 0;
+        while (node != null){
+            cmp = key.compareTo(node.key);
+            if(cmp > 0){
+                rank = rank + size(node.left) + 1;
+                node = node.right;
+            }else if(cmp < 0){
+                node = node.left;
+            }else {
+                rank = rank + size(node.left) + 1;
+                return rank;
+            }
+        }
+        return -1;
+    }
+
     public static void main(String []args){
 
         List<Integer> list = Arrays.asList(3,4,2,1,4,6,3,6,8,4,6,7,2,4,310,23,35,2,34);
@@ -276,6 +331,15 @@ public class AVL<K extends Comparable,V> {
             System.out.println(" height: "+ avl.height() + " size: "+ avl.size());
         });
 
+
+        for (int i = 1;i<11;i++){
+            int key = avl.select(i).key;
+            System.out.println(String.format("select rank = %d  key is: ",i)+ key );
+            System.out.println(String.format("select key = %d  rank is: ",key)+ avl.rank(key) );
+
+        }
+
+
         list.forEach(each -> {
             avl.delete(each);
             List<Integer> nodes = avl.inOrder();
@@ -285,7 +349,6 @@ public class AVL<K extends Comparable,V> {
             }
             System.out.println(" height: "+ avl.height() + " size: "+ avl.size());
         });
-
 
 
     }
